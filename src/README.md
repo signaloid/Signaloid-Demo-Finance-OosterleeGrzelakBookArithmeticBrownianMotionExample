@@ -3,8 +3,19 @@
 ## main.c
 Implementation of the main functionality of the application.
 
-## arithmetic-brownian-motion.c/h
-Implementation of the Arithmetic Brownian Motion algorithm as well as put and call option calculation.
+## kernel.c/h
+Mode-dispatch calculation kernels. `calculateOutputUxHw` runs the UxHw-mode
+kernel (a single distributional path). `calculateOutputMonteCarlo` runs the
+Monte Carlo kernel (one independent path per iteration).
+
+## arithmetic-brownian-motion-uxhw.c/h
+Implementation of the Arithmetic Brownian Motion algorithm, as well as put and
+call option payoff calculation, using UxHw distributional arithmetic.
+
+## arithmetic-brownian-motion-monte-carlo.c/h
+Implementation of the Arithmetic Brownian Motion algorithm, as well as put and
+call option payoff calculation, for the native Monte Carlo build (one sample
+per iteration).
 
 ## utilities.c/h
 These contain utility methods for parsing, setting, and reporting
@@ -37,12 +48,13 @@ building the C/C++ demo application.
 
 # To Build Natively on Non-Signaloid Platforms
 
-## On MacOs
+From the repository root, on both macOS and Linux:
 ```
-gcc -O3 -I. -I/opt/local/include main.c utilities.c uxhw.c arithmetic-brownian-motion.c common.c -L/opt/local/lib -lgsl -lgslcblas
+make local-build
 ```
 
-## On Linux
-```
-gcc -O3 -I. -I/opt/local/include main.c utilities.c uxhw.c arithmetic-brownian-motion.c common.c -L/opt/local/lib -lgsl -lgslcblas -lm
-```
+This builds the `demo-native-mc` executable at the repository root, using the
+top-level `Makefile` (see `../Makefile`), which compiles the sources listed
+above together with the UxHw compatibility shim in `uxhw.c`. See the
+[root README's Prerequisites section](../README.md#prerequisites) for the
+dependencies this build requires.

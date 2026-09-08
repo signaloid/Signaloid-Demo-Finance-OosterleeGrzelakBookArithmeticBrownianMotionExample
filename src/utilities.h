@@ -26,70 +26,71 @@
 
 typedef enum
 {
-	kOutputVariableIndexStockPriceAtMaturity		= 0,
-	kOutputVariableIndexCallOptionPrice			= 1,
-	kOutputVariableIndexPutOptionPrice			= 2,
-	kOutputVariableIndexValueAtRisk				= 3,
-	kOutputVariableIndexSimulatedReturns			= 4,
+	kOutputVariableIndexStockPriceAtMaturity    = 0,
+	kOutputVariableIndexCallOptionPrice         = 1,
+	kOutputVariableIndexPutOptionPrice          = 2,
+	kOutputVariableIndexValueAtRisk             = 3,
+	kOutputVariableIndexSimulatedReturns        = 4,
 	kOutputVariableIndexMax,
 } OutputVariableIndex;
 
 typedef enum
 {
-	kArithmeticBrownianMotionConfigFrequencyIndexDays	= 0,
-	kArithmeticBrownianMotionConfigFrequencyIndexMonths	= 1,
-	kArithmeticBrownianMotionConfigFrequencyIndexYears	= 2,
+	kArithmeticBrownianMotionConfigFrequencyIndexDays   = 0,
+	kArithmeticBrownianMotionConfigFrequencyIndexMonths = 1,
+	kArithmeticBrownianMotionConfigFrequencyIndexYears  = 2,
 	kArithmeticBrownianMotionConfigFrequencyIndexMax,
 } ArithmeticBrownianMotionConfigFrequencyIndex;
 
 typedef enum
 {
-	kArithmeticBrownianMotionConfigFrequencyDays		= 252,
-	kArithmeticBrownianMotionConfigFrequencyMonths		= 12,
-	kArithmeticBrownianMotionConfigFrequencyYears		= 1,
+	kArithmeticBrownianMotionConfigFrequencyDays    = 252,
+	kArithmeticBrownianMotionConfigFrequencyMonths  = 12,
+	kArithmeticBrownianMotionConfigFrequencyYears   = 1,
 } ArithmeticBrownianMotionConfigFrequency;
 
-typedef enum
-{
-#ifdef IS_SIMULATION
-	kArithmeticBrownianMotionConfigDefaultNumberOfPaths	= 1,
-	kArithmeticBrownianMotionConfigDefaultNumberOfSteps	= 1,
-#else
-	kArithmeticBrownianMotionConfigDefaultNumberOfPaths	= 25,
-	kArithmeticBrownianMotionConfigDefaultNumberOfSteps	= 252,
-#endif
-} ArithmeticBrownianMotionConfigDefault;
+#define kArithmeticBrownianMotionConfigPeriodicMeanReturn           (0.05)
+#define kArithmeticBrownianMotionConfigInitialPortfolioValue        (5.0)
+#define kArithmeticBrownianMotionConfigPeriodicVolatility           (0.4)
+#define kArithmeticBrownianMotionConfigDefaultStrikePrice           (4.5)
+#define kArithmeticBrownianMotionConfigDefaultMaturityTime          (1.0)
+#define kArithmeticBrownianMotionConfigDefaultQuantileProbability   (0.05)
 
-#define kArithmeticBrownianMotionConfigPeriodicMeanReturn		(0.05)
-#define kArithmeticBrownianMotionConfigInitialPortfolioValue		(5.0)
-#define kArithmeticBrownianMotionConfigPeriodicVolatility		(0.4)
-#define kArithmeticBrownianMotionConfigDefaultStrikePrice		(4.5)
-#define kArithmeticBrownianMotionConfigDefaultRiskFreeInterestRate	(0.05)
-#define kArithmeticBrownianMotionConfigDefaultStartDate			(0.0)
-#define kArithmeticBrownianMotionConfigDefaultMaturityTime		(1.0)
-#define kArithmeticBrownianMotionConfigDefaultQuantileProbability	(0.05)
-
-static const char *	kApplicationDescription = "Oosterlee-Grzelak Book Arithmetic Brownian Motion";
+/*
+ *	Maturity time used by the no-OS build, where command-line arguments are not
+ *	available. Expressed in trading days and converted to the years unit that
+ *	`CommandLineArguments.maturityTime` carries, using the same 252-trading-day
+ *	year as `kArithmeticBrownianMotionConfigFrequencyDays`.
+ */
+#define kArithmeticBrownianMotionConfigNoOSMaturityTimeInDays (2.0)
+#define kArithmeticBrownianMotionConfigNoOSMaturityTime          \
+		(kArithmeticBrownianMotionConfigNoOSMaturityTimeInDays / \
+		 (double) kArithmeticBrownianMotionConfigFrequencyDays)
 
 typedef struct
 {
-	CommonCommandLineArguments	common;
-	double				periodicMeanReturn;
-	unsigned int			frequencyIndex;
-	double				initialPortfolioValue;
-	double				periodicVolatility;
-	double				strikePrice;
-	double				quantileProbability;
-	double				maturityTime;
+	CommonCommandLineArguments  common;
+	double                      periodicMeanReturn;
+	unsigned int                frequencyIndex;
+	double                      initialPortfolioValue;
+	double                      periodicVolatility;
+	double                      strikePrice;
+	double                      quantileProbability;
+	double                      maturityTime;
 } CommandLineArguments;
 
 /**
  *	@brief	Print out command-line usage.
  */
-void	printUsage(void);
+void
+printUsage(void);
 
 /**
  *	@brief	Get command-line arguments.
+ *
+ *		In the no-OS build there is no command line: `argc` and `argv` are
+ *		ignored and the hard-coded configuration set by
+ *		`setNoOSCommandLineArguments()` is used instead.
  *
  *	@param	argc		: argument count from `main()`.
  *	@param	argv		: argument vector from `main()`.
@@ -97,4 +98,31 @@ void	printUsage(void);
  *	@return			: `kCommonConstantReturnTypeSuccess` if successful,
  *					else `kCommonConstantReturnTypeError`.
  */
-CommonConstantReturnType getCommandLineArguments(int argc, char *  argv[], CommandLineArguments *  arguments);
+CommonConstantReturnType
+getCommandLineArguments(int argc, char *  argv[], CommandLineArguments *  arguments);
+
+#ifdef NO_OS_AVAILABLE
+
+/**
+ *	@brief	Set the hard-coded command-line arguments used by the no-OS build.
+ *
+ *		This is the single place to change the configuration that no-OS
+ *		runs use, since those runs cannot be given command-line arguments.
+ *		Fields not set here keep the values from
+ *		`setDefaultCommandLineArguments()`.
+ *
+ *	@param	arguments	: command-line arguments pointer.
+ *	@return			: `kCommonConstantReturnTypeSuccess` if successful,
+ *					else `kCommonConstantReturnTypeError`.
+ */
+CommonConstantReturnType
+setNoOSCommandLineArguments(CommandLineArguments * arguments);
+#endif
+
+/**
+ *	@brief	Set the default values for the command-line arguments.
+ *
+ *	@param	arguments	: command-line arguments pointer.
+ */
+CommonConstantReturnType
+setDefaultCommandLineArguments(CommandLineArguments * arguments);

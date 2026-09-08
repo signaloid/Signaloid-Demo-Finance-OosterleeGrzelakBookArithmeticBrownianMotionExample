@@ -35,7 +35,6 @@ printUsage(void)
 		"\t[-S, --select-output <output : int (Default: %d)>] (Compute 0-indexed output. Calculate all possible outputs if equal to %d.)\n"
 		"\t[-M, --multiple-executions <Number of executions : int (Default: 1)>] (Repeated execute kernel for benchmarking.)\n"
 		"\t[-T, --time] (Timing mode: Times and prints the timing of the kernel execution.)\n"
-		"\t[-b, --benchmarking] (Benchmarking mode: Generate outputs in format for benchmarking.)\n"
 		"\t[-j, --json] (Print output in JSON format.)\n"
 		"\t[-h, --help] (Display this help message.)\n"
 		"\t[--mean-return, --periodic-mean-return <mean return : double (Default: %lf)>] (Periodic mean return.)\n"
@@ -65,9 +64,16 @@ printUsage(void)
  *
  *	@param	arguments	: command-line arguments pointer.
  */
-static void
-setDefaultCommandLineArguments(CommandLineArguments *  arguments)
+CommonConstantReturnType
+setDefaultCommandLineArguments(CommandLineArguments * arguments)
 {
+	if (arguments == NULL)
+	{
+		fputs("Error: The provided pointer to arguments is NULL.\n", stderr);
+
+		return kCommonConstantReturnTypeError;
+	}
+
 	/*
 	 *	Older GCC versions have a bug which gives a spurious warning for
 	 *	the C universal zero initializer `{0}`. Any workaround makes the
@@ -82,43 +88,96 @@ setDefaultCommandLineArguments(CommandLineArguments *  arguments)
 
 	*arguments = (CommandLineArguments)
 	{
-		.common			= (CommonCommandLineArguments) {0},
-		.periodicMeanReturn	= kArithmeticBrownianMotionConfigPeriodicMeanReturn,
-		.frequencyIndex		= kArithmeticBrownianMotionConfigFrequencyIndexDays,
-		.initialPortfolioValue	= kArithmeticBrownianMotionConfigInitialPortfolioValue,
-		.periodicVolatility	= kArithmeticBrownianMotionConfigPeriodicVolatility,
-		.strikePrice		= kArithmeticBrownianMotionConfigDefaultStrikePrice,
-		.quantileProbability	= kArithmeticBrownianMotionConfigDefaultQuantileProbability,
-		.maturityTime		= kArithmeticBrownianMotionConfigDefaultMaturityTime,
+		.common                 = (CommonCommandLineArguments) { 0 },
+		.periodicMeanReturn     = kArithmeticBrownianMotionConfigPeriodicMeanReturn,
+		.frequencyIndex         = kArithmeticBrownianMotionConfigFrequencyIndexDays,
+		.initialPortfolioValue  = kArithmeticBrownianMotionConfigInitialPortfolioValue,
+		.periodicVolatility     = kArithmeticBrownianMotionConfigPeriodicVolatility,
+		.strikePrice            = kArithmeticBrownianMotionConfigDefaultStrikePrice,
+		.quantileProbability    = kArithmeticBrownianMotionConfigDefaultQuantileProbability,
+		.maturityTime           = kArithmeticBrownianMotionConfigDefaultMaturityTime,
 	};
 #pragma GCC diagnostic pop
 
-	return;
+	return kCommonConstantReturnTypeSuccess;
 }
+
+#ifdef NO_OS_AVAILABLE
+CommonConstantReturnType
+setNoOSCommandLineArguments(CommandLineArguments * arguments)
+{
+	if (arguments == NULL)
+	{
+		fputs("Error: The provided pointer to arguments is NULL.\n", stderr);
+
+		return kCommonConstantReturnTypeError;
+	}
+
+	/*
+	 *	Start from the defaults so that every demo-specific field is
+	 *	initialized, then override the ones the no-OS build fixes. The
+	 *	`common` sub-struct is zeroed by this call, so it is set explicitly
+	 *	below.
+	 */
+	if (setDefaultCommandLineArguments(arguments) != kCommonConstantReturnTypeSuccess)
+	{
+		return kCommonConstantReturnTypeError;
+	}
+
+	arguments->periodicMeanReturn                   = kArithmeticBrownianMotionConfigPeriodicMeanReturn;
+	arguments->frequencyIndex                       = kArithmeticBrownianMotionConfigFrequencyIndexDays;
+	arguments->initialPortfolioValue                = kArithmeticBrownianMotionConfigInitialPortfolioValue;
+	arguments->periodicVolatility                   = kArithmeticBrownianMotionConfigPeriodicVolatility;
+	arguments->strikePrice                          = kArithmeticBrownianMotionConfigDefaultStrikePrice;
+	arguments->quantileProbability                  = kArithmeticBrownianMotionConfigDefaultQuantileProbability;
+	arguments->maturityTime                         = kArithmeticBrownianMotionConfigNoOSMaturityTime;
+	arguments->common.numberOfMonteCarloIterations  = 1;
+	arguments->common.outputSelect                  = kOutputVariableIndexMax;
+	arguments->common.isTimingEnabled               = false;
+	arguments->common.isMonteCarloMode              = false;
+	arguments->common.isOutputJSONMode              = false;
+	arguments->common.isWriteToFileEnabled          = false;
+
+	return kCommonConstantReturnTypeSuccess;
+}
+#endif
 
 CommonConstantReturnType
 getCommandLineArguments(
-	int			argc,
-	char *			argv[],
-	CommandLineArguments *	arguments)
+	int                     argc,
+	char *                  argv[],
+	CommandLineArguments *  arguments)
 {
-	const char *	periodicMeanReturnArg		= NULL;
-	const char * 	initialPortfolioValueArg	= NULL;
-	const char *	periodicVolatilityArg		= NULL;
-	const char *	strikePriceArg			= NULL;
-	const char *	quantileProbabilityArg 		= NULL;
-	const char *	maturityTimeArg			= NULL;
-	const char *	frequencyIndexArg		= NULL;
+#ifdef NO_OS_AVAILABLE
+	/*
+	 *	The no-OS build has no command line to parse, so ignore `argc` and
+	 *	`argv` and use the hard-coded configuration instead.
+	 */
+	(void) argc;
+	(void) argv;
+
+	puts("Using hard coded command line arguments");
+
+	return setNoOSCommandLineArguments(arguments);
+
+#else
+	const char *    periodicMeanReturnArg       = NULL;
+	const char *    initialPortfolioValueArg    = NULL;
+	const char *    periodicVolatilityArg       = NULL;
+	const char *    strikePriceArg              = NULL;
+	const char *    quantileProbabilityArg      = NULL;
+	const char *    maturityTimeArg             = NULL;
+	const char *    frequencyIndexArg           = NULL;
 
 	DemoOption demoSpecificOptions[] = {
-		{ .opt = "mean-return",		.optAlternative = "periodic-mean-return",	.hasArg = true, .foundArg = &periodicMeanReturnArg,	.foundOpt = NULL },
-		{ .opt = "initial-value", 	.optAlternative = "initial-portfolio-value", 	.hasArg = true, .foundArg = &initialPortfolioValueArg,	.foundOpt = NULL },
-		{ .opt = "volatility",		.optAlternative = "periodic-volatility",	.hasArg = true, .foundArg = &periodicVolatilityArg,	.foundOpt = NULL },
-		{ .opt = "strike",		.optAlternative = "strike-price",		.hasArg = true, .foundArg = &strikePriceArg,		.foundOpt = NULL },
-		{ .opt = "quantile", 		.optAlternative = "quantile-probability",	.hasArg = true, .foundArg = &quantileProbabilityArg,	.foundOpt = NULL },
-		{ .opt = "maturity-time",	.optAlternative = "maturity-time-years",	.hasArg = true, .foundArg = &maturityTimeArg,		.foundOpt = NULL },
-		{ .opt = "frequency",		.optAlternative = "frequency-index",		.hasArg = true, .foundArg = &frequencyIndexArg,		.foundOpt = NULL },
-		{0},
+		{ .opt = "mean-return",   .optAlternative = "periodic-mean-return",    .hasArg = true, .foundArg = &periodicMeanReturnArg,    .foundOpt = NULL },
+		{ .opt = "initial-value", .optAlternative = "initial-portfolio-value", .hasArg = true, .foundArg = &initialPortfolioValueArg, .foundOpt = NULL },
+		{ .opt = "volatility",    .optAlternative = "periodic-volatility",     .hasArg = true, .foundArg = &periodicVolatilityArg,    .foundOpt = NULL },
+		{ .opt = "strike",        .optAlternative = "strike-price",            .hasArg = true, .foundArg = &strikePriceArg,           .foundOpt = NULL },
+		{ .opt = "quantile",      .optAlternative = "quantile-probability",    .hasArg = true, .foundArg = &quantileProbabilityArg,   .foundOpt = NULL },
+		{ .opt = "maturity-time", .optAlternative = "maturity-time-years",     .hasArg = true, .foundArg = &maturityTimeArg,          .foundOpt = NULL },
+		{ .opt = "frequency",     .optAlternative = "frequency-index",         .hasArg = true, .foundArg = &frequencyIndexArg,        .foundOpt = NULL },
+		{ 0 },
 	};
 
 	if (arguments == NULL)
@@ -128,7 +187,10 @@ getCommandLineArguments(
 		return kCommonConstantReturnTypeError;
 	}
 
-	setDefaultCommandLineArguments(arguments);
+	if (setDefaultCommandLineArguments(arguments) != kCommonConstantReturnTypeSuccess)
+	{
+		return kCommonConstantReturnTypeError;
+	}
 
 	/*
 	 *	This application example has no application specific arguments.
@@ -182,7 +244,7 @@ getCommandLineArguments(
 	}
 
 	/*
-	 *	If a single output is selected, we must be in benchmarking mode or Monte Carlo mode.
+	 *	If a single output is selected, we must be in Monte Carlo mode.
 	 */
 	if (arguments->common.outputSelect > kOutputVariableIndexMax)
 	{
@@ -190,18 +252,20 @@ getCommandLineArguments(
 			stderr,
 			"Output select value (-S option) is greater than the possible number of outputs: Provided %zd. Max: %d\n",
 			arguments->common.outputSelect,
-			kOutputVariableIndexMax);
+			kOutputVariableIndexMax
+		);
 
 		return kCommonConstantReturnTypeError;
 	}
 	/*
-	 *	When all outputs are selected, we cannot be in benchmarking mode or Monte Carlo mode.
+	 *	When all outputs are selected, we cannot be in Monte Carlo mode.
 	 */
 	else if (arguments->common.outputSelect == kOutputVariableIndexMax)
 	{
-		if ((arguments->common.isBenchmarkingMode) || (arguments->common.isMonteCarloMode))
+		if (arguments->common.isMonteCarloMode)
 		{
-			fprintf(stderr, "Error: Please select a single output when in benchmarking mode or Monte Carlo mode.\n");
+			fprintf(stderr, "Error: Please select a single output when in Monte Carlo mode.\n");
+
 			return kCommonConstantReturnTypeError;
 		}
 	}
@@ -209,10 +273,12 @@ getCommandLineArguments(
 	if (periodicMeanReturnArg != NULL)
 	{
 		double periodicMeanReturn;
+
 		if (parseDoubleChecked(periodicMeanReturnArg, &periodicMeanReturn) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The periodic mean return (--mean-return) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->periodicMeanReturn = periodicMeanReturn;
@@ -221,10 +287,12 @@ getCommandLineArguments(
 	if (initialPortfolioValueArg != NULL)
 	{
 		double initialPortfolioValue;
+
 		if (parseDoubleChecked(initialPortfolioValueArg, &initialPortfolioValue) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The initial portfolio value (--initial-value) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->initialPortfolioValue = initialPortfolioValue;
@@ -233,10 +301,12 @@ getCommandLineArguments(
 	if (periodicVolatilityArg != NULL)
 	{
 		double periodicVolatility;
+
 		if (parseDoubleChecked(periodicVolatilityArg, &periodicVolatility) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The periodic volatility (--volatility) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->periodicVolatility = periodicVolatility;
@@ -245,10 +315,12 @@ getCommandLineArguments(
 	if (strikePriceArg != NULL)
 	{
 		double strikePrice;
+
 		if (parseDoubleChecked(strikePriceArg, &strikePrice) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The strike price (--strike) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->strikePrice = strikePrice;
@@ -257,16 +329,20 @@ getCommandLineArguments(
 	if (quantileProbabilityArg != NULL)
 	{
 		double quantileProbability;
+
 		if (parseDoubleChecked(quantileProbabilityArg, &quantileProbability) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The quantile probability parameter (--quantile) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
+
 		if (quantileProbability <= 0.0 || quantileProbability >= 1.0)
 		{
 			fprintf(stderr, "Error: The quantile probability parameter (--quantile) must be in the range (0, 1).\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->quantileProbability = quantileProbability;
@@ -275,16 +351,20 @@ getCommandLineArguments(
 	if (maturityTimeArg != NULL)
 	{
 		double maturityTime;
+
 		if (parseDoubleChecked(maturityTimeArg, &maturityTime) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The maturity time (--maturity-time) must be a real number.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
+
 		if (maturityTime <= 0.0)
 		{
 			fprintf(stderr, "Error: The maturity time (--maturity-time) must be positive.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
 		arguments->maturityTime = maturityTime;
@@ -293,20 +373,26 @@ getCommandLineArguments(
 	if (frequencyIndexArg != NULL)
 	{
 		int frequencyIndex;
+
 		if (parseIntChecked(frequencyIndexArg, &frequencyIndex) != kCommonConstantReturnTypeSuccess)
 		{
 			fprintf(stderr, "Error: The frequency index (--frequency) must be an integer.\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
+
 		if (frequencyIndex < 0 || frequencyIndex >= kArithmeticBrownianMotionConfigFrequencyIndexMax)
 		{
 			fprintf(stderr, "Error: The frequency index (--frequency) must be 0 (daily), 1 (monthly), or 2 (yearly).\n");
 			printUsage();
+
 			return kCommonConstantReturnTypeError;
 		}
-		arguments->frequencyIndex = (unsigned int)frequencyIndex;
+		arguments->frequencyIndex = (unsigned int) frequencyIndex;
 	}
 
 	return kCommonConstantReturnTypeSuccess;
+
+#endif
 }
