@@ -46,24 +46,38 @@ You can compile and run this application locally as a native Monte Carlo impleme
 
 ### Prerequisites
 
-Install dependencies (on Linux):
+The native build needs GNU Make, a C compiler, and the GNU Scientific Library (GSL).
+
+On macOS, install the Xcode Command Line Tools (which provide `make` and the C
+compiler) and then install GSL with [Homebrew](https://brew.sh):
 ```bash
-sudo apt-get install libgsl-dev libgslcblas0
+xcode-select --install
+brew install gsl
 ```
+
+On Linux (Debian/Ubuntu):
+```bash
+sudo apt-get install -y build-essential libgsl-dev
+```
+
+The top-level `Makefile` detects the GSL install location automatically, covering
+Homebrew on Apple Silicon (`/opt/homebrew`), Homebrew on Intel (`/usr/local`) and
+MacPorts (`/opt/local`), so no further configuration is needed on macOS.
 
 ### Compilation
 
 From the repository root:
 ```bash
-cd src/
-gcc -O3 -I. -I../submodules/common -I../submodules/compat main.c utilities.c ../submodules/compat/uxhw.c arithmetic-brownian-motion.c ../submodules/common/common.c -lgsl -lgslcblas -lm -o abm
+make local-build
 ```
+
+This builds the `demo-native-mc` executable at the repository root.
 
 ### Execution
 
 Run with Monte Carlo mode (required for local execution):
 ```bash
-./abm -S 0 -M 10000
+./demo-native-mc -S 0 -M 10000
 ```
 
 This runs 10,000 Monte Carlo iterations to calculate the stock price at maturity. The results are stored in `data.out` where the first line contains execution time in microseconds (μs), and subsequent lines contain output sample values.

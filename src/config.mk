@@ -1,5 +1,7 @@
 SOURCES =\
         main.c\
-	common.c\
 	utilities.c\
-	arithmetic-brownian-motion.c
+	common.c\
+	kernel.c\
+	arithmetic-brownian-motion-uxhw.c\
+	arithmetic-brownian-motion-monte-carlo.c
